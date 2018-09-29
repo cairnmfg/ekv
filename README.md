@@ -2,6 +2,10 @@
 
 Ekv is a simple ETS+GenServer key-value store providing optional persistence to the local file system.
 
+[![CircleCI](https://circleci.com/gh/cairnmfg/ekv.svg?style=svg)](https://circleci.com/gh/cairnmfg/ekv)
+
+Ekv was extracted from [cairnmfg/field](https://github.com/cairnmfg/field), an embedded firmware. The local file system persistence in Ekv is meant to simplify the process of maintaining state through system reboots.
+
 ## Usage
 
 1. Set up a new module to manage the database process and provide it a table_name argument.
@@ -18,7 +22,7 @@ end
 > InMemory.start_link()
 ```
 
-3. Write to, read from, delete, and reset the store.
+3. Write to, read from, delete from, and reset the store.
 
 ```
 > InMemory.read("key")
