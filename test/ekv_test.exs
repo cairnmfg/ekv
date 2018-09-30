@@ -11,6 +11,18 @@ defmodule EkvTest do
       on_exit(fn -> InMemory.reset() end)
     end
 
+    test "__ekv__/1 returns path configuration" do
+      assert is_nil(InMemory.__ekv__(:path))
+    end
+
+    test "__ekv__/1 returns table_name configuration" do
+      assert InMemory.__ekv__(:table_name) == :in_memory
+    end
+
+    test "__ekv__/1 returns error for unsupported configuration" do
+      :error = InMemory.__ekv__(:else)
+    end
+
     test "delete/1 deletes record by key" do
       fixture(InMemory)
       :ok = InMemory.delete(@key)
@@ -83,6 +95,18 @@ defmodule EkvTest do
       Persisted.reset()
       File.rm_rf(path)
       on_exit(fn -> Persisted.reset() end)
+    end
+
+    test "__ekv__/1 returns path configuration" do
+      assert Persisted.__ekv__(:path) == "tmp/persisted"
+    end
+
+    test "__ekv__/1 returns table_name configuration" do
+      assert Persisted.__ekv__(:table_name) == :persisted
+    end
+
+    test "__ekv__/1 returns error for unsupported configuration" do
+      :error = Persisted.__ekv__(:else)
     end
 
     test "read/1 returns record from the file store" do
