@@ -24,6 +24,14 @@ defmodule Ekv do
       end
 
       @doc """
+      Returns :path and :table_name configuration for module
+      using Ekv.
+      """
+      def __ekv__(:path), do: unquote(path)
+      def __ekv__(:table_name), do: unquote(table_name)
+      def __ekv__(_key), do: :error
+
+      @doc """
       Delete a record from the key-value store by key.
       """
       def delete(key), do: Ekv.delete(__MODULE__, key)
