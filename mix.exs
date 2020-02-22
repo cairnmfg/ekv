@@ -18,7 +18,12 @@ defmodule Ekv.MixProject do
     ]
   end
 
-  defp deps(), do: [{:mix_test_watch, "~> 0.8", only: :dev, runtime: false}]
+  defp deps() do
+    [
+      {:ex_doc, "~> 0.21.3", only: :dev, runtime: false},
+      {:mix_test_watch, "~> 0.8", only: :dev, runtime: false}
+    ]
+  end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]

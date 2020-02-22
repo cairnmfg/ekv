@@ -1,6 +1,64 @@
 defmodule Ekv do
   @moduledoc """
-  Ekv is a data store for field devices.
+  Ekv is a simple key-value store providing optional persistence to the local file
+  system.
+
+  Under the hood, Ekv uses [ETS](https://erlang.org/doc/man/ets.html) and
+  [GenServer](https://hexdocs.pm/elixir/GenServer.html) to plainly manage state.
+
+  ### Usage
+
+  1. Set up a new module to manage the database process with the Ekv macro. Provide
+  it a table_name argument.
+
+          defmodule InMemory do
+            use Ekv, table_name: :in_memory
+          end
+
+  2. Start the process
+
+
+          $ InMemory.start_link()
+
+  3. Write to, read from, delete from, and reset the store.
+
+      ```
+      $ InMemory.read("key")
+      {:error, :not_found}
+
+      $ InMemory.write("key", "value")
+      {:ok, "value"}
+
+      $ InMemory.read("key")
+      {:ok, "value"}
+
+      $ InMemory.delete("key")
+      :ok
+
+      $ InMemory.read("key")
+      {:error, :not_found}
+
+      $ InMemory.write("key", "value")
+      {:ok, "value"}
+
+      $ InMemory.reset()
+      :ok
+
+      $ InMemory.read("key")
+      {:error, :not_found}
+      ```
+
+  ### Persistence
+
+  Optionally, provide a path argument to the Ekv macro to persist records to the
+  local file system.
+
+  Depending on your use case, this may facilitate retaining some state through
+  application restarts.
+
+      defmodule Persisted do
+        use Ekv, path: "tmp/persisted", table_name: :persisted
+      end
   """
 
   @doc false
@@ -113,12 +171,14 @@ defmodule Ekv do
     end
   end
 
+  @doc false
   def handle(:reset, %{ets_table_name: ets_table_name, path: path} = state) do
     :ets.delete_all_objects(ets_table_name)
     reset_persisted(path)
     {:noreply, state}
   end
 
+  @doc false
   def handle(:write, key, value, %{ets_table_name: ets_table_name, path: path} = state) do
     true = :ets.insert(ets_table_name, {key, value})
     write_persisted(path, {key, value}, state)
