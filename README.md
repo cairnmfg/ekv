@@ -8,7 +8,7 @@ Ekv was extracted from [cairnmfg/field](https://github.com/cairnmfg/field), an e
 
 1. Set up a new module to manage the database process and provide it a table_name argument.
 
-```
+```ex
 defmodule InMemory do
   use Ekv, table_name: :in_memory
 end
@@ -22,7 +22,7 @@ end
 
 3. Write to, read from, delete from, and reset the store.
 
-```
+```ex
 > InMemory.read("key")
 {:error, :not_found}
 
@@ -54,7 +54,7 @@ Optionally, provide a path argument to the Ekv macro to additionally persist rec
 
 Depending on your use case, you may be useful to retain state through application restarts.
 
-```
+```ex
 defmodule Persisted do
   use Ekv, path: "tmp/persisted", table_name: :persisted
 end
