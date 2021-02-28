@@ -5,7 +5,7 @@ defmodule Ekv.MixProject do
     [
       app: :ekv,
       version: "0.1.0",
-      elixir: "~> 1.6",
+      elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env())
@@ -20,8 +20,9 @@ defmodule Ekv.MixProject do
 
   defp deps() do
     [
-      {:ex_doc, "~> 0.21.3", only: :dev, runtime: false},
-      {:mix_test_watch, "~> 0.8", only: :dev, runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev], runtime: false},
+      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:mix_test_watch, "~> 1.0.2", only: :dev, runtime: false}
     ]
   end
 

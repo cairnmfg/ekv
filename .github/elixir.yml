@@ -1,0 +1,45 @@
+name: Ekv CI actions
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - uses: actions/cache@v2
+      id: cache
+      with:
+        path: |
+          deps
+          _build
+        key: ${{runner.os}}-${{hashFiles('**/mix.lock')}}
+
+    - name: Setup elixir
+      uses: erlef/setup-elixir@v1
+      with:
+        elixir-version: '1.11.1'
+        otp-version: '22.2'
+
+    - name: Install Dependencies
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: mix deps.get
+
+    - name: Create PLTs
+      if: steps.cache.outputs.cache-hit != 'true'
+      run: mix dialyzer --plt
+
+    - name: Run Tests
+      run: mix test
+
+    - name: Run format check 
+      run: mix format --check-formatted
+
+    - name: Run Dyalyzer
+      run: mix dialyzer

@@ -2,8 +2,6 @@
 
 Ekv is a simple ETS+GenServer key-value store providing optional persistence to the local file system.
 
-[![CircleCI](https://circleci.com/gh/cairnmfg/ekv.svg?style=svg)](https://circleci.com/gh/cairnmfg/ekv)
-
 Ekv was extracted from [cairnmfg/field](https://github.com/cairnmfg/field), an embedded firmware. The local file system persistence in Ekv is designed to simplify the process of maintaining state through system reboots/crashes in embedded systems (or other kinds of lightweight software environments with partial/read-only file systems).
 
 ## Usage
