@@ -33,6 +33,18 @@ defmodule EkvTest do
       :ok = InMemory.delete("123456")
     end
 
+    test "match/1 returns matching records" do
+      fixture(InMemory)
+      fixture(InMemory, "ignored")
+
+      {:ok, results} = InMemory.match("network")
+      assert length(results) == 1
+
+      [{match_key, match_value} | _rest] = results
+      assert match_key == @key
+      assert match_value == @value
+    end
+
     test "read/1 returns the record by key" do
       fixture(InMemory)
       {:ok, returned} = InMemory.read(@key)
@@ -86,6 +98,10 @@ defmodule EkvTest do
     test "write/2 returns an error when key is an integer" do
       :error = InMemory.write(123, "new-value")
     end
+
+    test "write/2 returns an error when key is a string with a slash" do
+      :error = InMemory.write("network/name", "new-value")
+    end
   end
 
   describe "with persistence" do
@@ -107,6 +123,26 @@ defmodule EkvTest do
 
     test "__ekv__/1 returns error for unsupported configuration" do
       :error = Persisted.__ekv__(:else)
+    end
+
+    test "match/1 returns matching records" do
+      %{path: path} = :sys.get_state(Persisted)
+      File.mkdir_p(path)
+
+      path
+      |> Path.join("#{@key}.storage")
+      |> File.write(:erlang.term_to_binary(@value))
+
+      path
+      |> Path.join("ignored.storage")
+      |> File.write(:erlang.term_to_binary(@value))
+
+      {:ok, results} = Persisted.match("network")
+      assert length(results) == 1
+
+      [{match_key, match_value} | _rest] = results
+      assert match_key == @key
+      assert match_value == @value
     end
 
     test "read/1 returns record from the file store" do
@@ -131,6 +167,10 @@ defmodule EkvTest do
 
       {:ok, contents} = File.read(file_path)
       assert @value == :erlang.binary_to_term(contents)
+    end
+
+    test "write/2 returns an error when key is a string with a slash" do
+      :error = Persisted.write("network/name", "new-value")
     end
 
     test "delete/1 removes the record from the file store" do

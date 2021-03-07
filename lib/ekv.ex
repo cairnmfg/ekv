@@ -41,6 +41,9 @@ defmodule Ekv do
       $ InMemory.write("key", "value")
       {:ok, "value"}
 
+      $ InMemory.match("ke")
+      {:ok, [{"key", "value"}]}
+
       $ InMemory.reset()
       :ok
 
@@ -60,6 +63,8 @@ defmodule Ekv do
         use Ekv, path: "tmp/persisted", table_name: :persisted
       end
   """
+
+  @extension ".storage"
 
   @doc false
   defmacro __using__(opts \\ []) do
@@ -95,6 +100,11 @@ defmodule Ekv do
       def delete(key), do: Ekv.delete(__MODULE__, key)
 
       @doc """
+      Match records in the key-value store.
+      """
+      def match(pattern), do: Ekv.match(__MODULE__, pattern)
+
+      @doc """
       Read a record from the key-value store by key.
       """
       def read(key), do: Ekv.read(__MODULE__, key)
@@ -108,6 +118,15 @@ defmodule Ekv do
       Write a records in the key-value store by key.
       """
       def write(key, value), do: Ekv.write(__MODULE__, key, value)
+
+      @doc false
+      def handle_call(
+            {:match, pattern},
+            _from,
+            %{ets_table_name: ets_table_name, path: path} = state
+          ) do
+        Ekv.handle(:match, pattern, state)
+      end
 
       @doc false
       def handle_call(
@@ -161,14 +180,38 @@ defmodule Ekv do
     {:noreply, state}
   end
 
-  def handle(:read, key, %{ets_table_name: ets_table_name, path: path} = state) do
-    case :ets.lookup(ets_table_name, key) do
-      [{^key, value}] ->
-        {:reply, {:ok, value}, state}
+  def handle(:match, pattern, %{ets_table_name: ets_table_name, path: path} = state)
+      when is_nil(path) do
+    results =
+      :ets.tab2list(ets_table_name)
+      |> Enum.filter(fn {key, _value} -> String.contains?(key, pattern) end)
 
-      _ ->
-        read_persisted(path, key, state)
-    end
+    {:reply, {:ok, results}, state}
+  end
+
+  def handle(:match, pattern, %{ets_table_name: ets_table_name, path: path} = state) do
+    results =
+      "#{path}/*#{pattern}*#{@extension}"
+      |> Path.wildcard()
+      |> Enum.filter(fn filename -> String.ends_with?(filename, @extension) end)
+      |> Enum.map(fn filename ->
+        key = Path.basename(filename, @extension)
+
+        case lookup(ets_table_name, key, path, state) do
+          {:ok, value} ->
+            {key, value}
+
+          _ ->
+            :ignore
+        end
+      end)
+      |> Enum.reject(fn result -> result == :ignore end)
+
+    {:reply, {:ok, results}, state}
+  end
+
+  def handle(:read, key, %{ets_table_name: ets_table_name, path: path} = state) do
+    {:reply, lookup(ets_table_name, key, path, state), state}
   end
 
   @doc false
@@ -180,9 +223,17 @@ defmodule Ekv do
 
   @doc false
   def handle(:write, key, value, %{ets_table_name: ets_table_name, path: path} = state) do
-    true = :ets.insert(ets_table_name, {key, value})
-    write_persisted(path, {key, value}, state)
+    if String.contains?(key, "/") do
+      {:reply, :error, state}
+    else
+      true = :ets.insert(ets_table_name, {key, value})
+      write_persisted(path, {key, value}, state)
+    end
   end
+
+  @doc false
+  def match(module, pattern) when is_binary(pattern),
+    do: GenServer.call(module, {:match, pattern})
 
   @doc false
   def read(module, key) when is_atom(key),
@@ -205,24 +256,34 @@ defmodule Ekv do
 
   def write(_module, _key, _value), do: :error
 
+  defp lookup(ets_table_name, key, path, state) do
+    case :ets.lookup(ets_table_name, key) do
+      [{^key, value}] ->
+        {:ok, value}
+
+      _ ->
+        read_persisted(path, key, state)
+    end
+  end
+
   defp delete_persisted(path, _key) when is_nil(path), do: :ignore
 
   defp delete_persisted(path, key), do: File.rm(filepath_for(path, key))
 
-  defp filepath_for(dir_path, key), do: Path.join(dir_path, "#{key}.storage")
+  defp filepath_for(dir_path, key), do: Path.join(dir_path, key <> @extension)
 
-  defp read_persisted(path, _key, state) when is_nil(path),
-    do: {:reply, {:error, :not_found}, state}
+  defp read_persisted(path, _key, _state) when is_nil(path),
+    do: {:error, :not_found}
 
-  defp read_persisted(path, key, %{ets_table_name: ets_table_name} = state) do
+  defp read_persisted(path, key, %{ets_table_name: ets_table_name}) do
     case File.read(filepath_for(path, key)) do
       {:ok, contents} when contents != "" ->
         term = :erlang.binary_to_term(contents)
         :ets.insert(ets_table_name, [{key, term}])
-        {:reply, {:ok, term}, state}
+        {:ok, term}
 
       _ ->
-        {:reply, {:error, :not_found}, state}
+        {:error, :not_found}
     end
   end
 
